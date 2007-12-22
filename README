@@ -1,0 +1,26 @@
+
+JavaScript Finite State Machine Builder
+======================================= 
+
+Version 0.1, 2007-12-22
+
+This script embeds in JavaScript a domain-specific language 
+for describing and building simple finite state machines.
+
+See the source code of spec/fsm.html for how it is supposed
+to work.
+
+The script is meant to be usable independently of any other
+libraries, however, I intend to integrate generated FSMs
+with DOM events and Prototype custom events.
+
+The manner in which an FSM is attached to classes/objects
+is still rather convoluted. The general idea is that it
+(a) should be possible to insert the FSM as the first link in
+the prototype chain and
+(b) should be possible to directly attach it to an existing
+object.
+
+
+
+Copyright (c) 2007, Michael Schuerig, michael@schuerig.de

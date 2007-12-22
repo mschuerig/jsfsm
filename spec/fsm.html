@@ -1,0 +1,186 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <title>FSM</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+  <link rel="stylesheet" href="js-spec.css" type="text/css" charset="utf-8" />
+<!--
+  <script type="text/javascript" src="firebug/firebug.js"></script>
+-->
+  <script type="text/javascript" src="prototype.js"></script>
+  <script type="text/javascript" src="jsspec.js"></script>
+  <script type="text/javascript" src="../fsm.js"></script>
+  <script type="text/javascript" src="fsm-matchers.js"></script>
+  <script type="text/javascript">
+  /* <![CDATA[ */
+
+var machineDescription = new FSM();
+with (machineDescription) {
+  onUnexpectedEvent(function() { window.unexpectedEvents.push($A(arguments).join('_')); });
+
+  state('start', 'initial')
+    .event('go').goesTo('middle').doing(function() { window.transitionActions.push('start_go'); }).doing('phew')
+    .event('run').goesTo('finish')
+    .onExiting(function() { window.exitingActions.push('start_exit'); });
+
+  state('middle')
+    .onUnexpectedEvent(function() { window.unexpectedEvents.push('gotcha'); })
+    .onEntering(function() { window.enteringActions.push('middle_enter'); })
+    .event('back').goesTo('start').onlyIf(function() { return window.guard })
+    .event('go').goesTo('finish');
+
+  state('finish', 'final');
+}
+var Machine = machineDescription.buildMachine();
+
+function TestMachine() {}
+TestMachine.prototype.phew = function() { window.transitionActions.push('phew'); };
+TestMachine.prototype = new Machine(TestMachine.prototype);
+
+Expectation.extend(TestMachine);
+
+function clearLogs() {
+  window.transitionActions  = [];
+  window.exitingActions     = [];
+  window.enteringActions    = [];
+  window.unexpectedEvents   = [];
+}
+
+
+with (Spec) {
+  describe('A new machine', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+    });
+    
+    it('should have an initial state', function() {
+      this.machine.initialState().name().should(equal('start'));
+    });
+    it('should be in initial state', function() {
+      expect(this.machine).should(beInInitialState());
+    });
+    it('should not be in a final state', function() {
+      expect(this.machine).shouldNot(beInFinalState());
+    });
+    it('should have three states', function() {
+      $H(this.machine.states).size().should(equal(3));
+    });
+    it('should go to middle state', function() {
+      this.machine.go();
+      expect(this.machine).should(beInState('middle'));
+    });
+    it('should run to finish state', function() {
+      this.machine.run();
+      expect(this.machine).should(beInState('finish'));
+    });
+    it('should not interfere with another machine', function() {
+      var other = new TestMachine();
+      this.machine.go();
+      expect(other).should(beInState('start'));
+    });
+  }});
+  
+  describe('A machine receiving an unexpected event', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+      this.machine.back();
+    });
+    it('should not move', function() {
+      this.machine.should(beInState('start'));
+    });
+    it('should take notice', function() {
+      expect(window.unexpectedEvents).should(equal(['start_back']));
+    });
+  }});
+
+  describe('A machine with state-specific unexpected handler receiving an unexpected event', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+      this.machine.transitionTo('middle');
+      this.machine.run();
+    });
+    it('should not move', function() {
+      this.machine.should(beInState('middle'));
+    });
+    it('should take notice', function() {
+      expect(window.unexpectedEvents).should(equal(['gotcha']));
+    });
+  }});
+
+  describe('A machine in middle state', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+      this.machine.transitionTo('middle');
+    });
+    
+    it('should not go back if guard is false', function() {
+      window.guard = false;
+      this.machine.back();
+      expect(this.machine).should(beInState('middle'));
+    });
+    it('should go back if guard is true', function() {
+      window.guard = true;
+      this.machine.back();
+      expect(this.machine).should(beInState('start'));
+    });
+  }});
+
+  describe('A machine transitioning to middle state', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+      this.machine.go();
+    });
+
+    it('should be in middle state', function() {
+      expect(this.machine).should(beInState('middle'));
+    });
+    it('should not be in initial state', function() {
+      expect(this.machine).shouldNot(beInInitialState());
+    });
+    it('should not be in a final state', function() {
+      expect(this.machine).shouldNot(beInFinalState());
+    });
+    it('should execute transition actions', function() {
+      expect(window.transitionActions).should(equal(['start_go', 'phew']));
+    });
+    it('should execute exiting actions', function() {
+      expect(window.exitingActions).should(equal(['start_exit']));
+    });
+    it('should execute entering actions', function() {
+      expect(window.enteringActions).should(equal(['middle_enter']));
+    });
+  }});
+
+  describe('A machine in finish state', function() { with (this) {
+    before('each', function() {
+      clearLogs();
+      this.machine = new TestMachine();
+      this.machine.transitionTo('finish');
+    });
+
+    it('should not be in initial state', function() {
+      expect(this.machine).shouldNot(beInInitialState());
+    });
+    it('should be in a final state', function() {
+      expect(this.machine).should(beInFinalState());
+    });
+  }});
+}
+
+Event.observe(window, 'load', function() {
+  Specs.run();
+});
+
+  /* ]]> */
+  </script>
+</head>
+<body>
+  <div id="spec_results"></div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+li {
+	list-style: none;
+}
+
+li.pending {
+	background: #ee9;
+}
+
+li.pass {
+	background: #9e9;
+}
+
+li.fail {
+	background: #e99;
+}
+
+li.error {
+	background: #111;
+	color: #fff;
+}
+
+.label {
+	text-transform: uppercase;
+	font-weight: bold;
+	margin-right: .5em;
+}
+
