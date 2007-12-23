@@ -15,8 +15,7 @@
   <script type="text/javascript">
   /* <![CDATA[ */
 
-var machineDescription = new FSM();
-with (machineDescription) {
+var Machine = FSM.build(function(fsm) { with (fsm) {
   onUnexpectedEvent(function() { window.unexpectedEvents.push($A(arguments).join('_')); });
 
   state('start', 'initial')
@@ -31,8 +30,7 @@ with (machineDescription) {
     .event('go').goesTo('finish');
 
   state('finish', 'final');
-}
-var Machine = machineDescription.buildMachine();
+}});
 
 function TestMachine() {}
 TestMachine.prototype.phew = function() { window.transitionActions.push('phew'); };

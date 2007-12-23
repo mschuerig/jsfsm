@@ -25,7 +25,7 @@ function FSM() {
   var states        = {};
   var allEventNames = {};
   
-  this.Version = '0.1';
+  this.Version = '0.1.1';
   
   function delegateTo(obj, delegateName) {
     var funcs = [];
@@ -265,7 +265,7 @@ function FSM() {
   }
   
   
-  function embedInto(context) {
+  var embedInto = function(context) {
     context.states = {};
     for (var n in states) {
       context.states[n] = states[n].buildStateFor(context);
@@ -302,4 +302,10 @@ function FSM() {
   }
   
   delegateTo(machine, 'builder', 'event', 'goesTo', 'doing', 'onlyIf');
+}
+
+FSM.build = function(definitionBlock) {
+  var fsm = new FSM;
+  definitionBlock(fsm);
+  return fsm.buildMachine();
 }

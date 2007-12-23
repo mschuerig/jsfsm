@@ -3,7 +3,7 @@ require 'rake/packagetask'
 
 SPEC_ROOT     = File.expand_path(File.dirname(__FILE__))
 SPEC_DIST_DIR = File.join(SPEC_ROOT, 'dist')
-SPEC_VERSION  = '0.1'
+SPEC_VERSION  = '0.1.1'
 
 task :default => [:package, :clean_package_source]
 
