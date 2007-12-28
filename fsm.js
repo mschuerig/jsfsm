@@ -22,10 +22,10 @@
 function FSM() {
   var machine       = this;
   this.builder      = null;
-  var states        = {};
+  var stateBuilders = {};
   var allEventNames = {};
   
-  this.Version = '0.1.1';
+  this.Version = '0.2';
   
   function delegateTo(obj, delegateName) {
     var funcs = [];
@@ -160,24 +160,27 @@ function FSM() {
         return stateBuilder;
       };
       
-      this.buildTransitionFor = function(context) {
-        return function() {
-          var enteredState;
-          try {
-            var passed = runActions(this, guards, arguments, true);
-            if (!passed) return false;
-            runActions(this, actions, arguments);
-            if (!isLoopback) {
-              runActions(this, exitActions, arguments);
-            }
-            enteredState = this.transitionTo(toState);
-            return true;
-          } finally {
-            if (!isLoopback && enteredState) {
-              runActions(this, enteredState.enterActions(), arguments);
+      this.buildTransitionFor = function() {
+        return {
+          appliesTo: function() {
+            return runActions(this, guards, arguments, true);
+          },
+          execute: function() {
+            var enteredState;
+            try {
+              runActions(this, actions, arguments);
+              if (!isLoopback) {
+                runActions(this, exitActions, arguments);
+              }
+              enteredState = this.transitionTo(toState);
+              return true;
+            } finally {
+              if (!isLoopback && enteredState) {
+                runActions(this, enteredState.enterActions(), arguments);
+              }
             }
           }
-        }
+        };
       }
     }
 
@@ -204,7 +207,7 @@ function FSM() {
     }
     delegateTo(stateBuilder, 'transitionBuilder', 'goesTo', 'doing', 'onlyIf');
     
-    this.buildStateFor = function(context) {
+    this.buildState = function() {
       var state = {
         name:         function() { return stateName; },
         isInitial:    function() { return isInitial; },
@@ -217,35 +220,34 @@ function FSM() {
         return true;
       };
       for (var e in events) {
-        state[e] = buildEventHandler(context, e, events[e]);
+        state[e] = buildEventHandler(e, events[e]);
       }
       for (var e in allEventNames) {
         if (!state[e]) {
-          state[e] = buildUnexpectedEventHandler(context, e);
+          state[e] = buildUnexpectedEventHandler(e);
         }
       }
       return state;
     };
     
-    function buildEventHandler(context, event, transitionBuilders) {
+    function buildEventHandler(event, transitionBuilders) {
       var transitions = [];
       var len = transitionBuilders.length;
       for (var i = 0; i < len; i++) {
-        transitions.push(transitionBuilders[i].buildTransitionFor(context));
+        transitions.push(transitionBuilders[i].buildTransitionFor());
       }
       return function() {
         for (var i = 0; i < len; i++) {
           var t = transitions[i];
-          var result = t.apply(this, arguments);
-          if (result) {
-            return result;
+          if (t.appliesTo.apply(this, arguments)) {
+            return t.execute.apply(this, arguments);
           }
         }
         return false;
       };
     }
     
-    function buildUnexpectedEventHandler(context, event) {
+    function buildUnexpectedEventHandler(event) {
       return function() {
         unexpectedEventHandler(stateName, event);
       }
@@ -254,9 +256,9 @@ function FSM() {
 
   
   this.state = function(name, kind) {
-    var stateBuilder  = new StateBuilder(name, kind);
-    states[name]      = stateBuilder;
-    builder           = stateBuilder;
+    var stateBuilder    = new StateBuilder(name, kind);
+    stateBuilders[name] = stateBuilder;
+    builder             = stateBuilder;
     return stateBuilder;
   };
   
@@ -267,8 +269,8 @@ function FSM() {
   
   var embedInto = function(context) {
     context.states = {};
-    for (var n in states) {
-      context.states[n] = states[n].buildStateFor(context);
+    for (var n in stateBuilders) {
+      context.states[n] = stateBuilders[n].buildState();
       var pn = predicateName(n);
       context[pn] = predicateFunc(context, pn);
     }
@@ -295,8 +297,8 @@ function FSM() {
   
   this.toString = function() {
     var desc = "States:\n";
-    for (var s in states) {
-      desc += '  ' + states[s] + "\n";
+    for (var s in stateBuilders) {
+      desc += '  ' + stateBuilders[s] + "\n";
     }
     return desc;
   }
