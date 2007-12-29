@@ -75,6 +75,12 @@ with (Spec) {
       this.machine.go();
       expect(other).should(beInState('start'));
     });
+    it('should know its possible successor states', function() {
+      this.machine.should(haveSuccessorStates(['middle', 'finish']));
+    });
+    it('should know its expected events', function() {
+      this.machine.should(expectEvents(['go', 'run']));
+    });
   }});
   
   describe('A machine receiving an unexpected event', function() { with (this) {
@@ -123,6 +129,18 @@ with (Spec) {
       this.machine.back();
       expect(this.machine).should(beInState('start'));
     });
+    it('should know its possible successor states', function() {
+      window.guard = false;
+      this.machine.should(haveSuccessorStates(['finish']));
+      window.guard = true;
+      this.machine.should(haveSuccessorStates(['start', 'finish']));
+    });
+    it('should know its expected events', function() {
+      window.guard = false;
+      this.machine.should(expectEvents(['go']));
+      window.guard = true;
+      this.machine.should(expectEvents(['go', 'back']));
+    });
   }});
 
   describe('A machine transitioning to middle state', function() { with (this) {
@@ -164,6 +182,12 @@ with (Spec) {
     });
     it('should be in a final state', function() {
       expect(this.machine).should(beInFinalState());
+    });
+    it('should know its possible successor states', function() {
+      this.machine.should(haveSuccessorStates([]));
+    });
+    it('should know its expected events', function() {
+      this.machine.should(expectEvents([]));
     });
   }});
 }

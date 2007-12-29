@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <title>FSM</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf8" />
+  <style type="text/css">
+  /* <![CDATA[ */
+
+.state {
+  width: 3em;
+  height: 3em;
+  margin: 2em;
+  padding: 3em;
+  font-weight: bold;
+  vertical-align: middle;
+  text-align: center;
+  border: 1px solid #666;
+}
+
+.dropAllowed {
+  border-color: #f00;
+}
+
+#token {
+  width: 2em;
+  height: 2em;
+  background-color: #000;
+}
+
+  /* ]]> */
+  </style>
+  <script type="text/javascript" src="prototype.js"></script>
+  <script type="text/javascript" src="effects.js"></script>
+  <script type="text/javascript" src="dragdrop.js"></script>
+  <script type="text/javascript" src="jsspec.js"></script>
+  <script type="text/javascript" src="../fsm.js"></script>
+  <script type="text/javascript" src="fsm-matchers.js"></script>
+  <script type="text/javascript">
+  /* <![CDATA[ */
+
+var Machine = FSM.build(function(fsm) { with (fsm) {
+//  onUnexpectedEvent(function() { });
+
+  state('s1', 'initial')
+    .event('dropOn:s2').goesTo('s2');
+  state('s2')
+    .event('dropOn:s3').goesTo('s3');
+
+  state('s3', 'final');
+}});
+
+function DDMachine() {}
+DDMachine.prototype = new Machine(DDMachine.prototype);
+
+document.observe('dom:loaded', function() {
+  var token = new Draggable('token', {
+      revert: 'failure',
+      onStart: function() {},
+      onDropped: function() {}
+    }
+  );
+  
+  
+  Droppables.add('s1');
+  Droppables.add('s2', {
+    hoverclass: 'dropAllowed',
+    onDrop: function(token) {
+      console.log('dropped: ', token);
+    }
+  });
+  Droppables.add('s3');
+});
+
+  /* ]]> */
+  </script>
+</head>
+<body>
+  <div class="state" id="s1">S1</div>
+  <div class="state" id="s2">S2</div>
+  <div class="state" id="s3">S3</div>
+  <div id="token"></div>
+</body>
+</html>

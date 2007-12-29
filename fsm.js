@@ -52,6 +52,15 @@ function FSM() {
     }
   }
   
+  function mapArray(arr, f) {
+    var result = [];
+    var l = arr.length;
+    for (var i = 0; i < l; i++) {
+      result.push(f(arr[i]));
+    }
+    return result;
+  }
+  
   function predicateName(name) {
     return 'is' + name.charAt(0).toUpperCase() + name.substring(1);
   }
@@ -160,8 +169,11 @@ function FSM() {
         return stateBuilder;
       };
       
-      this.buildTransitionFor = function() {
+      this.buildTransition = function() {
         return {
+          event: function() {
+            return eventName;
+          },
           appliesTo: function() {
             return runActions(this, guards, arguments, true);
           },
@@ -179,6 +191,9 @@ function FSM() {
                 runActions(this, enteredState.enterActions(), arguments);
               }
             }
+          },
+          goesTo: function() {
+            return toState;
           }
         };
       }
@@ -208,19 +223,31 @@ function FSM() {
     delegateTo(stateBuilder, 'transitionBuilder', 'goesTo', 'doing', 'onlyIf');
     
     this.buildState = function() {
+      var transitions = buildTransitions();
+      
       var state = {
-        name:         function() { return stateName; },
-        isInitial:    function() { return isInitial; },
-        isFinal:      function() { return isFinal; },
-        enterActions: function() { return enterActions; },
-        exitActions:  function() { return exitActions; },
-        toString:     function() { return '#<State: ' + stateName + '>'; }
+        name:             function() { return stateName; },
+        isInitial:        function() { return isInitial; },
+        isFinal:          function() { return isFinal; },
+        enterActions:     function() { return enterActions; },
+        exitActions:      function() { return exitActions; },
+        successorStates:  function() {
+          return mapArray(allApplicableTransitions(transitions, arguments), function(t) {
+            return t.goesTo();
+          });
+        },
+        expectedEvents:   function() {
+          return mapArray(allApplicableTransitions(transitions, arguments), function(t) {
+            return t.event();
+          });
+        },
+        toString:         function() { return '#<State: ' + stateName + '>'; }
       };
       state[predicateName(stateName)] = function() {
         return true;
       };
       for (var e in events) {
-        state[e] = buildEventHandler(e, events[e]);
+        state[e] = buildEventHandler(transitions[e]);
       }
       for (var e in allEventNames) {
         if (!state[e]) {
@@ -230,21 +257,24 @@ function FSM() {
       return state;
     };
     
-    function buildEventHandler(event, transitionBuilders) {
-      var transitions = [];
-      var len = transitionBuilders.length;
-      for (var i = 0; i < len; i++) {
-        transitions.push(transitionBuilders[i].buildTransitionFor());
+    function buildTransitions() {
+      var transitions = {};
+      for (var e in events) {
+        transitions[e] = mapArray(events[e], function(transitionBuilder) {
+          return transitionBuilder.buildTransition();
+        });
       }
+      return transitions;
+    }
+    
+    function buildEventHandler(transitions) {
       return function() {
-        for (var i = 0; i < len; i++) {
-          var t = transitions[i];
-          if (t.appliesTo.apply(this, arguments)) {
-            return t.execute.apply(this, arguments);
-          }
+        var t = firstApplicableTransition(transitions, arguments);
+        if (t) {
+          return t.execute.apply(this, arguments);
         }
         return false;
-      };
+      }
     }
     
     function buildUnexpectedEventHandler(event) {
@@ -252,8 +282,33 @@ function FSM() {
         unexpectedEventHandler(stateName, event);
       }
     }
-  }
+    
+    function firstApplicableTransition(transitions, args) {
+      var len = transitions.length;
+      for (var i = 0; i < len; i++) {
+        var t = transitions[i];
+        if (t.appliesTo.apply(this, args)) {
+          return t;
+        }
+      }
+      return null;
+    }
 
+    function allApplicableTransitions(transitions, args) {
+      var applTrans = [];
+      for (var e in transitions) {
+        var ts = transitions[e];
+        var len = ts.length;
+        for (var i = 0; i < len; i++) {
+          var t = ts[i];
+          if (t.appliesTo.apply(this, args)) {
+            applTrans.push(t);
+          }
+        }
+      }
+      return applTrans;
+    }
+  }
   
   this.state = function(name, kind) {
     var stateBuilder    = new StateBuilder(name, kind);
@@ -274,13 +329,13 @@ function FSM() {
       var pn = predicateName(n);
       context[pn] = predicateFunc(context, pn);
     }
-    var initial = initialState(context.states);
-    var finals  = finalStates(context.states);
-    context.initialState  = function() { return initial; };
-    context.finalStates   = function() { return finals; };
-    context.currentState  = initial;
-    context.transitionTo  = function(stateName) {
-      this.currentState   = context.states[stateName];
+    var initial             = initialState(context.states);
+    var finals              = finalStates(context.states);
+    context.initialState    = function() { return initial; };
+    context.finalStates     = function() { return finals; };
+    context.currentState    = initial;
+    context.transitionTo    = function(stateName) {
+      this.currentState     = context.states[stateName];
       return this.currentState;
     };
     delegateTo(context, 'currentState', allEventNames);
