@@ -2,20 +2,23 @@
 JavaScript Finite State Machine Builder
 ======================================= 
 
-Version 0.1.1, 2007-12-23
+Version 0.2, 2007-12-30
 
 This script embeds in JavaScript a domain-specific language 
-for describing and building simple finite state machines.
+-- a fluent interface, really -- for describing and building
+simple finite state machines.
 
-See the source code of spec/fsm.html for how it is supposed
-to work.
+See the source code of spec/fsm.html and the files in examples
+for how it is supposed to work.
 
-The script is meant to be usable independently of any other
-libraries, however, I intend to integrate generated FSMs
-with DOM events and Prototype custom events.
 
 
 == Changes
+
+=== 0.2 (2007-12-30)
+- Accessors for successorStates and expectedEvents
+- Machine-global onEntering, onExiting actions
+- Drag & Drop example
 
 === 0.1.1 (2007-12-23)
 Add FSM.build() as suggested by Nicolás Sanguinetti.

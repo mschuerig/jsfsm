@@ -20,10 +20,12 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 function FSM() {
-  var machine       = this;
-  this.builder      = null;
-  var stateBuilders = {};
-  var allEventNames = {};
+  var machine             = this;
+  this.builder            = null;
+  var globalEnterActions  = [];
+  var globalExitActions   = [];
+  var stateBuilders       = {};
+  var allEventNames       = {};
   
   this.Version = '0.2';
   
@@ -184,7 +186,7 @@ function FSM() {
             try {
               runActions(this, actions, arguments);
               if (!isLoopback) {
-                runActions(this, exitActions, arguments);
+                runActions(this, this.currentState.exitActions(), arguments);
               }
               enteredState = this.transitionTo(toState);
               return true;
@@ -231,8 +233,8 @@ function FSM() {
         name:             function() { return stateName; },
         isInitial:        function() { return isInitial; },
         isFinal:          function() { return isFinal; },
-        enterActions:     function() { return enterActions; },
-        exitActions:      function() { return exitActions; },
+        enterActions:     function() { return globalEnterActions.concat(enterActions); },
+        exitActions:      function() { return exitActions.concat(globalExitActions); },
 
         successorStates:  function(context) {
           return mapArray(allApplicableTransitions(context, transitions), function(t) {
@@ -323,6 +325,14 @@ function FSM() {
     builder             = stateBuilder;
     return stateBuilder;
   };
+  
+  this.onEnteringAnyState = function(handler) {
+    globalEnterActions.push(handler);
+  },
+  
+  this.onExitingAnyState = function(handler) {
+    globalExitActions.push(handler);
+  },
   
   this.onUnexpectedEvent = function(handler) {
     globalUnexpectedEventHandler = handler;

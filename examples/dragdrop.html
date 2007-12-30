@@ -52,23 +52,20 @@
   /* <![CDATA[ */
 
 var Machine = FSM.build(function(fsm) { with (fsm) {
+  onEnteringAnyState('addStateClass');
+  onExitingAnyState('removeStateClass');
+
   state('s1', 'initial')
-    .onEntering('addStateClass')
-    .onExiting('removeStateClass')
     .event('dropOn:s1')
     .event('dropOn:s2').goesTo('s2')
     .event('dropOn:s3').goesTo('s3');
     
   state('s2')
-    .onEntering('addStateClass')
-    .onExiting('removeStateClass')
     .event('dropOn:s2')
     .event('dropOn:s1').goesTo('s1').onlyIf('canGoBack').doing('imBack')
     .event('dropOn:s3').goesTo('s3');
 
   state('s3', 'final')
-    .onEntering('addStateClass')
-    .onExiting('removeStateClass')
     .event('dropOn:s2').goesTo('s2').onlyIf('canGoBack')
     .event('dropOn:s3');
 }});
@@ -93,10 +90,9 @@ var DDMachine = Class.create({
     return $F('can_go_back');
   },
   
-  imBack: function() { console.log("I'm back!"); },
+  imBack: function() { /* console.log("I'm back!"); */ },
   
   dragStarted: function() {
-//console.log('dragStarted: ', arguments);
     this.successorStates().each(function(s) {
       s = $(s);
       s.addClassName('droppable');
@@ -108,7 +104,6 @@ var DDMachine = Class.create({
   },
   
   dragEnd: function() {
-//console.log('dragEnd: ', arguments);
     this.container.select('.droppable').each(function(s) {
       s.removeClassName('droppable');
       Droppables.remove(s);
@@ -120,7 +115,6 @@ var DDMachine = Class.create({
   },
 
   removeStateClass: function() {
-//console.log('removeStateClass: ', this, this.token);
     this.token.removeClassName('in_' + this.currentState.name());
   },
 
@@ -130,12 +124,10 @@ var DDMachine = Class.create({
   },
 
   fireDropped: function(element, droppable) {
-//console.log('fireDropped: ', arguments);
     droppable.fire('dd:dropped', { where: droppable });
   },
   
   dispatch: function(event) {
-//console.log('drop event: ', event.memo.event);
     this['dropOn:' + event.memo.where.id]();
   }
 });

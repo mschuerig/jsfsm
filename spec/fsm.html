@@ -14,6 +14,8 @@
 
 var Machine = FSM.build(function(fsm) { with (fsm) {
   onUnexpectedEvent(function() { window.unexpectedEvents.push($A(arguments).join('_')); });
+  onEnteringAnyState(function() { window.transitionActions.push('global_enter_' + this.currentState.name()) });
+  onExitingAnyState(function() { window.transitionActions.push('global_exit_' + this.currentState.name()) });
 
   state('start', 'initial')
     .event('go').goesTo('middle').doing(function() { window.transitionActions.push('start_go'); }).doing('phew')
@@ -160,7 +162,7 @@ with (Spec) {
       expect(this.machine).shouldNot(beInFinalState());
     });
     it('should execute transition actions', function() {
-      expect(window.transitionActions).should(equal(['start_go', 'phew']));
+      expect(window.transitionActions).should(equal(['start_go', 'phew', 'global_exit_start', 'global_enter_middle']));
     });
     it('should execute exiting actions', function() {
       expect(window.exitingActions).should(equal(['start_exit']));
