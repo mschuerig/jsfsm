@@ -15,6 +15,12 @@ for how it is supposed to work.
 
 == Changes
 
+=== 0.2.2 (2007-12-30)
+Include examples in dist.
+
+=== 0.2.1 (2007-12-30)
+Corrected version in Rakefile.
+
 === 0.2 (2007-12-30)
 - Accessors for successorStates and expectedEvents
 - Machine-global onEntering, onExiting actions

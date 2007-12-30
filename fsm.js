@@ -27,7 +27,7 @@ function FSM() {
   var stateBuilders       = {};
   var allEventNames       = {};
   
-  this.Version = '0.2';
+  this.Version = '0.2.2';
   
   function delegateTo(obj, delegateName) {
     var funcs = [];
