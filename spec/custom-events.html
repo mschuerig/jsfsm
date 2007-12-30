@@ -8,18 +8,24 @@
   /* <![CDATA[ */
 
 .state {
+  float: left;
   width: 3em;
   height: 3em;
-  margin: 2em;
+  margin: 3em;
   padding: 3em;
   font-weight: bold;
   vertical-align: middle;
   text-align: center;
-  border: 1px solid #666;
+  border: 2px solid #666;
+}
+
+.droppable {
+  border-style: dashed;
+  border-color: green;
 }
 
 .dropAllowed {
-  border-color: #f00;
+  border-style: dotted;
 }
 
 #token {
@@ -28,57 +34,132 @@
   background-color: #000;
 }
 
+.clearfix:after {
+  content: ".";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+
   /* ]]> */
   </style>
   <script type="text/javascript" src="prototype.js"></script>
   <script type="text/javascript" src="effects.js"></script>
   <script type="text/javascript" src="dragdrop.js"></script>
-  <script type="text/javascript" src="jsspec.js"></script>
   <script type="text/javascript" src="../fsm.js"></script>
-  <script type="text/javascript" src="fsm-matchers.js"></script>
   <script type="text/javascript">
   /* <![CDATA[ */
 
 var Machine = FSM.build(function(fsm) { with (fsm) {
-//  onUnexpectedEvent(function() { });
-
   state('s1', 'initial')
-    .event('dropOn:s2').goesTo('s2');
+    .onEntering('addStateClass')
+    .onExiting('removeStateClass')
+    .event('dropOn:s1')
+    .event('dropOn:s2').goesTo('s2')
+    .event('dropOn:s3').goesTo('s3');
+    
   state('s2')
+    .onEntering('addStateClass')
+    .onExiting('removeStateClass')
+    .event('dropOn:s2')
+    .event('dropOn:s1').goesTo('s1').onlyIf('canGoBack').doing('imBack')
     .event('dropOn:s3').goesTo('s3');
 
-  state('s3', 'final');
+  state('s3', 'final')
+    .onEntering('addStateClass')
+    .onExiting('removeStateClass')
+    .event('dropOn:s2').goesTo('s2').onlyIf('canGoBack')
+    .event('dropOn:s3');
 }});
 
-function DDMachine() {}
+var DDMachine = Class.create({
+  initialize: function(container, token){
+    this.container = $(container);
+    this.token = $(token);
+    this.addStateClass();
+    this.container.observe('dd:dropped', this.dispatch.bind(this));
+
+    this.positionTokenInState();
+    
+    this.draggable = new Draggable(this.token, {
+      revert:    'failure',
+      onStart:   this.dragStarted.bind(this),
+      onEnd:     this.dragEnd.bind(this)
+    });
+  },
+  
+  canGoBack: function() {
+    return $F('can_go_back');
+  },
+  
+  imBack: function() { console.log("I'm back!"); },
+  
+  dragStarted: function() {
+//console.log('dragStarted: ', arguments);
+    this.successorStates().each(function(s) {
+      s = $(s);
+      s.addClassName('droppable');
+      Droppables.add(s, {
+        hoverclass: 'dropAllowed',
+        onDrop: this.fireDropped
+      });
+    }, this);
+  },
+  
+  dragEnd: function() {
+//console.log('dragEnd: ', arguments);
+    this.container.select('.droppable').each(function(s) {
+      s.removeClassName('droppable');
+      Droppables.remove(s);
+    });
+  },
+
+  addStateClass: function() {
+    this.token.addClassName('in_' + this.currentState.name());
+  },
+
+  removeStateClass: function() {
+//console.log('removeStateClass: ', this, this.token);
+    this.token.removeClassName('in_' + this.currentState.name());
+  },
+
+  positionTokenInState: function() {
+    this.token.clonePosition(this.currentState.name(),
+      {setLeft: true, setTop: true, setWidth: false, setHeight: false});
+  },
+
+  fireDropped: function(element, droppable) {
+//console.log('fireDropped: ', arguments);
+    droppable.fire('dd:dropped', { where: droppable });
+  },
+  
+  dispatch: function(event) {
+//console.log('drop event: ', event.memo.event);
+    this['dropOn:' + event.memo.where.id]();
+  }
+});
+
 DDMachine.prototype = new Machine(DDMachine.prototype);
 
 document.observe('dom:loaded', function() {
-  var token = new Draggable('token', {
-      revert: 'failure',
-      onStart: function() {},
-      onDropped: function() {}
-    }
-  );
-  
-  
-  Droppables.add('s1');
-  Droppables.add('s2', {
-    hoverclass: 'dropAllowed',
-    onDrop: function(token) {
-      console.log('dropped: ', token);
-    }
-  });
-  Droppables.add('s3');
+  var dd = new DDMachine('states', 'token');
 });
 
   /* ]]> */
   </script>
 </head>
 <body>
-  <div class="state" id="s1">S1</div>
-  <div class="state" id="s2">S2</div>
-  <div class="state" id="s3">S3</div>
-  <div id="token"></div>
+  <p>
+    <form action="#">
+      <label><input type="checkbox" id="can_go_back" /> Can go back</label>
+    </form>
+  </p>
+  <div id="states" class="clearfix">
+    <div class="state" id="s1">S1</div>
+    <div class="state" id="s2">S2</div>
+    <div class="state" id="s3">S3</div>
+    <div id="token"></div>
+  </div>
 </body>
 </html>

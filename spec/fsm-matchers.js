@@ -79,7 +79,7 @@ Matcher.create("StateEvents", {
   },
   matches: function(actual) {
     this.state = actual.currentState;
-    this.actual = this.state.expectedEvents();
+    this.actual = actual.expectedEvents();
     return this[this.comparison]();
   },
   expect_events: function() {
@@ -105,7 +105,7 @@ Matcher.create("StateSuccessors", {
   },
   matches: function(actual) {
     this.state = actual.currentState;
-    this.actual = this.state.successorStates();
+    this.actual = actual.successorStates();
     return this[this.comparison]();
   },
   have_successors: function() {

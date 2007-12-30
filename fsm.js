@@ -146,14 +146,14 @@ function FSM() {
       var guards      = [];
       var actions     = [];
       var isLoopback  = false;
-      var toState, guard, action;
+      var toStateName, guard, action;
       
       this.toString = function() {
-        return '#<TransitionBuilder: ' + stateName + '--' + eventName + '-->' + toState + '>';
+        return '#<TransitionBuilder: ' + stateName + '--' + eventName + '-->' + toStateName + '>';
       };
-      this.goesTo = function(toStateName) {
-        toState     = toStateName;
-        isLoopback  = (stateName == toState);
+      this.goesTo = function(toState) {
+        toStateName = toState;
+        isLoopback  = (stateName == toStateName);
         return stateBuilder;
       };
       this.onlyIf = function(condition) {
@@ -170,6 +170,8 @@ function FSM() {
       };
       
       this.buildTransition = function() {
+        var toState = toStateName || stateName;
+        
         return {
           event: function() {
             return eventName;
@@ -224,25 +226,29 @@ function FSM() {
     
     this.buildState = function() {
       var transitions = buildTransitions();
-      
+
       var state = {
         name:             function() { return stateName; },
         isInitial:        function() { return isInitial; },
         isFinal:          function() { return isFinal; },
         enterActions:     function() { return enterActions; },
         exitActions:      function() { return exitActions; },
-        successorStates:  function() {
-          return mapArray(allApplicableTransitions(transitions, arguments), function(t) {
+
+        successorStates:  function(context) {
+          return mapArray(allApplicableTransitions(context, transitions), function(t) {
             return t.goesTo();
           });
         },
-        expectedEvents:   function() {
-          return mapArray(allApplicableTransitions(transitions, arguments), function(t) {
+        expectedEvents:   function(context) {
+          return mapArray(allApplicableTransitions(context, transitions), function(t) {
             return t.event();
           });
         },
-        toString:         function() { return '#<State: ' + stateName + '>'; }
+
+        inspect:          function() { return '#<State: ' + stateName + '>'; },
+        toString:         function() { return stateName; }
       };
+
       state[predicateName(stateName)] = function() {
         return true;
       };
@@ -268,8 +274,8 @@ function FSM() {
     }
     
     function buildEventHandler(transitions) {
-      return function() {
-        var t = firstApplicableTransition(transitions, arguments);
+      return function(arguments) {
+        var t = firstApplicableTransition(this, transitions, arguments);
         if (t) {
           return t.execute.apply(this, arguments);
         }
@@ -282,32 +288,33 @@ function FSM() {
         unexpectedEventHandler(stateName, event);
       }
     }
-    
-    function firstApplicableTransition(transitions, args) {
+
+    function firstApplicableTransition(context, transitions, args) {
       var len = transitions.length;
       for (var i = 0; i < len; i++) {
         var t = transitions[i];
-        if (t.appliesTo.apply(this, args)) {
+        if (t.appliesTo.apply(context, args)) {
           return t;
         }
       }
       return null;
     }
-
-    function allApplicableTransitions(transitions, args) {
-      var applTrans = [];
-      for (var e in transitions) {
-        var ts = transitions[e];
-        var len = ts.length;
-        for (var i = 0; i < len; i++) {
-          var t = ts[i];
-          if (t.appliesTo.apply(this, args)) {
-            applTrans.push(t);
-          }
+  }
+  
+  function allApplicableTransitions(context, transitions) {
+    context = context || this;
+    var applTrans = [];
+    for (var e in transitions) {
+      var ts = transitions[e];
+      var len = ts.length;
+      for (var i = 0; i < len; i++) {
+        var t = ts[i];
+        if (t.appliesTo.apply(context)) {
+          applTrans.push(t);
         }
       }
-      return applTrans;
     }
+    return applTrans;
   }
   
   this.state = function(name, kind) {
@@ -325,7 +332,7 @@ function FSM() {
   var embedInto = function(context) {
     context.states = {};
     for (var n in stateBuilders) {
-      context.states[n] = stateBuilders[n].buildState();
+      context.states[n] = stateBuilders[n].buildState(context);
       var pn = predicateName(n);
       context[pn] = predicateFunc(context, pn);
     }
@@ -337,6 +344,12 @@ function FSM() {
     context.transitionTo    = function(stateName) {
       this.currentState     = context.states[stateName];
       return this.currentState;
+    };
+    context.expectedEvents = function() {
+      return this.currentState.expectedEvents(this);
+    };
+    context.successorStates = function() {
+      return this.currentState.successorStates(this);
     };
     delegateTo(context, 'currentState', allEventNames);
     return context;
