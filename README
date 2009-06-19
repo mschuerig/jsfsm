@@ -11,6 +11,36 @@ simple finite state machines.
 See the source code of spec/fsm.html and the files in examples
 for how it is supposed to work.
 
+Here's just a quick motivational example:
+
+var Machine = FSM.build(function(fsm) { with (fsm) {
+  onUnexpectedEvent(function() { ... });
+
+  state('start', 'initial')
+    .event('go')
+      .goesTo('middle')
+      .doing(function() { ... })
+      .doing('phew')
+    .event('run')
+      .goesTo('finish')
+    .onExiting(function() { ... });
+
+  state('middle')
+    .onUnexpectedEvent(function() { ... })
+    .onEntering(function() { ... })
+    .event('back')
+      .goesTo('start')
+      .onlyIf(function() { return true_or_false })
+    .event('go')
+      .goesTo('finish');
+
+  state('finish', 'final');
+}});
+
+function TestMachine() {}
+// amend TestMachine.prototype here all the way you want
+TestMachine.prototype.phew = function() { ... };
+TestMachine.prototype = new Machine(TestMachine.prototype);
 
 
 == Changes
